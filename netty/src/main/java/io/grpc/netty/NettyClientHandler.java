@@ -135,6 +135,7 @@ class NettyClientHandler extends AbstractNettyHandler {
   private Status channelInactiveReason;
 
   static NettyClientHandler newHandler(
+      Http2FrameLogger frameLogger,
       ClientTransportLifecycleManager lifecycleManager,
       @Nullable KeepAliveManager keepAliveManager,
       boolean autoFlowControl,
@@ -162,6 +163,7 @@ class NettyClientHandler extends AbstractNettyHandler {
         connection,
         frameReader,
         frameWriter,
+        frameLogger,
         lifecycleManager,
         keepAliveManager,
         autoFlowControl,
@@ -181,6 +183,7 @@ class NettyClientHandler extends AbstractNettyHandler {
       final Http2Connection connection,
       Http2FrameReader frameReader,
       Http2FrameWriter frameWriter,
+      Http2FrameLogger frameLogger,
       ClientTransportLifecycleManager lifecycleManager,
       KeepAliveManager keepAliveManager,
       boolean autoFlowControl,
@@ -203,7 +206,6 @@ class NettyClientHandler extends AbstractNettyHandler {
     Preconditions.checkNotNull(eagAttributes, "eagAttributes");
     Preconditions.checkNotNull(authority, "authority");
 
-    Http2FrameLogger frameLogger = new Http2FrameLogger(LogLevel.DEBUG, NettyClientHandler.class);
     frameReader = new Http2InboundFrameLogger(frameReader, frameLogger);
     frameWriter = new Http2OutboundFrameLogger(frameWriter, frameLogger);
 

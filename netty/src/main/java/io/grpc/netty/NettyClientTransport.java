@@ -54,7 +54,9 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoop;
 import io.netty.channel.EventLoopGroup;
+import io.netty.handler.codec.http2.Http2FrameLogger;
 import io.netty.handler.codec.http2.StreamBufferingEncoder.Http2ChannelClosedException;
+import io.netty.handler.logging.LogLevel;
 import io.netty.util.AsciiString;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
@@ -105,6 +107,8 @@ class NettyClientTransport implements ConnectionClientTransport {
   private final boolean useGetForSafeMethods;
   private final Ticker ticker;
 
+  private final Http2FrameLogger frameLogger;
+
   NettyClientTransport(
       SocketAddress address, ChannelFactory<? extends Channel> channelFactory,
       Map<ChannelOption<?>, ?> channelOptions, EventLoopGroup group,
@@ -112,6 +116,21 @@ class NettyClientTransport implements ConnectionClientTransport {
       int maxMessageSize, int maxHeaderListSize,
       long keepAliveTimeNanos, long keepAliveTimeoutNanos,
       boolean keepAliveWithoutCalls, String authority, @Nullable String userAgent,
+      Runnable tooManyPingsRunnable, TransportTracer transportTracer, Attributes eagAttributes,
+      LocalSocketPicker localSocketPicker, ChannelLogger channelLogger,
+      boolean useGetForSafeMethods, Ticker ticker) {
+    this(address, channelFactory, channelOptions, group, negotiator, autoFlowControl, flowControlWindow, maxMessageSize, maxHeaderListSize, keepAliveTimeNanos, keepAliveTimeoutNanos, keepAliveWithoutCalls, authority, userAgent, null, tooManyPingsRunnable, transportTracer, eagAttributes, localSocketPicker, channelLogger, useGetForSafeMethods, ticker);
+    new Exception("NettyClientTransport creation").printStackTrace(); // TODO Sunny
+  }
+
+  NettyClientTransport(
+      SocketAddress address, ChannelFactory<? extends Channel> channelFactory,
+      Map<ChannelOption<?>, ?> channelOptions, EventLoopGroup group,
+      ProtocolNegotiator negotiator, boolean autoFlowControl, int flowControlWindow,
+      int maxMessageSize, int maxHeaderListSize,
+      long keepAliveTimeNanos, long keepAliveTimeoutNanos,
+      boolean keepAliveWithoutCalls, String authority, @Nullable String userAgent,
+      @Nullable Http2FrameLogger frameLogger,
       Runnable tooManyPingsRunnable, TransportTracer transportTracer, Attributes eagAttributes,
       LocalSocketPicker localSocketPicker, ChannelLogger channelLogger,
       boolean useGetForSafeMethods, Ticker ticker) {
@@ -141,6 +160,7 @@ class NettyClientTransport implements ConnectionClientTransport {
     this.channelLogger = Preconditions.checkNotNull(channelLogger, "channelLogger");
     this.useGetForSafeMethods = useGetForSafeMethods;
     this.ticker = Preconditions.checkNotNull(ticker, "ticker");
+    this.frameLogger = frameLogger != null ? frameLogger : new Http2FrameLogger(LogLevel.DEBUG, NettyClientHandler.class);
   }
 
   @Override
@@ -219,6 +239,7 @@ class NettyClientTransport implements ConnectionClientTransport {
     }
 
     handler = NettyClientHandler.newHandler(
+        frameLogger,
         lifecycleManager,
         keepAliveManager,
         autoFlowControl,

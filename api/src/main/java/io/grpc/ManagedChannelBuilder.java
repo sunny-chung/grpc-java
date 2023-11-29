@@ -611,6 +611,10 @@ public abstract class ManagedChannelBuilder<T extends ManagedChannelBuilder<T>> 
     throw new UnsupportedOperationException();
   }
 
+  public T frameLogger(Object logger) {
+    throw new UnsupportedOperationException();
+  }
+
   /**
    * Builds a channel using the given parameters.
    *
