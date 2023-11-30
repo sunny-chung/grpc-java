@@ -252,6 +252,12 @@ public abstract class ForwardingChannelBuilder2<T extends ManagedChannelBuilder<
     return thisT();
   }
 
+  @Override
+  public T channelListener(GrpcChannelListener channelListener) {
+    delegate().channelListener(channelListener);
+    return thisT();
+  }
+
   /**
    * Returns the {@link ManagedChannel} built by the delegate by default. Overriding method can
    * return different value.

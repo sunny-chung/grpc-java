@@ -52,6 +52,7 @@ import io.grpc.EquivalentAddressGroup;
 import io.grpc.ForwardingChannelBuilder;
 import io.grpc.ForwardingClientCall;
 import io.grpc.Grpc;
+import io.grpc.GrpcChannelListener;
 import io.grpc.InternalChannelz;
 import io.grpc.InternalChannelz.ChannelStats;
 import io.grpc.InternalChannelz.ChannelTrace;
@@ -112,6 +113,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
@@ -579,8 +581,11 @@ final class ManagedChannelImpl extends ManagedChannel implements
 
   private final Rescheduler idleTimer;
 
+  private final GrpcChannelListener channelListener;
+
   ManagedChannelImpl(
       ManagedChannelImplBuilder builder,
+      @Nullable GrpcChannelListener channelListener,
       ClientTransportFactory clientTransportFactory,
       BackoffPolicy.Provider backoffPolicyProvider,
       ObjectPool<? extends Executor> balancerRpcExecutorPool,
@@ -701,6 +706,8 @@ final class ManagedChannelImpl extends ManagedChannel implements
       }
       serviceConfigUpdated = true;
     }
+
+    this.channelListener = channelListener;
   }
 
   private static NameResolver getNameResolver(
@@ -1723,7 +1730,18 @@ final class ManagedChannelImpl extends ManagedChannel implements
     }
 
     @Override
+    public void onResolve(String host) {
+      if (channelListener != null) {
+        channelListener.onDnsStartResolve(host);
+      }
+    }
+
+    @Override
     public void onResult(final ResolutionResult resolutionResult) {
+      if (channelListener != null) {
+        channelListener.onDnsResolved(resolutionResult.getAddresses().stream().flatMap(it -> it.getAddresses().stream()).collect(Collectors.toList()));
+      }
+
       final class NamesResolved implements Runnable {
 
         @SuppressWarnings("ReferenceEquality")

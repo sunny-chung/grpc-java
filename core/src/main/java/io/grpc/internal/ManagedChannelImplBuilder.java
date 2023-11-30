@@ -30,6 +30,7 @@ import io.grpc.ClientInterceptor;
 import io.grpc.CompressorRegistry;
 import io.grpc.DecompressorRegistry;
 import io.grpc.EquivalentAddressGroup;
+import io.grpc.GrpcChannelListener;
 import io.grpc.InternalChannelz;
 import io.grpc.InternalGlobalInterceptors;
 import io.grpc.ManagedChannel;
@@ -189,6 +190,8 @@ public final class ManagedChannelImplBuilder
   private boolean recordRealTimeMetrics = false;
   private boolean recordRetryMetrics = true;
   private boolean tracingEnabled = true;
+
+  private GrpcChannelListener channelListener;
 
   /**
    * An interface for Transport implementors to provide the {@link ClientTransportFactory}
@@ -645,9 +648,16 @@ public final class ManagedChannelImplBuilder
   }
 
   @Override
+  public ManagedChannelImplBuilder channelListener(GrpcChannelListener channelListener) {
+    this.channelListener = channelListener;
+    return this;
+  }
+
+  @Override
   public ManagedChannel build() {
     return new ManagedChannelOrphanWrapper(new ManagedChannelImpl(
         this,
+        channelListener,
         clientTransportFactoryBuilder.buildClientTransportFactory(),
         new ExponentialBackoffPolicy.Provider(),
         SharedResourcePool.forResource(GrpcUtil.SHARED_CHANNEL_EXECUTOR),

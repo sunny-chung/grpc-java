@@ -34,6 +34,7 @@ import io.grpc.ChannelLogger;
 import io.grpc.EquivalentAddressGroup;
 import io.grpc.ExperimentalApi;
 import io.grpc.ForwardingChannelBuilder2;
+import io.grpc.GrpcChannelListener;
 import io.grpc.HttpConnectProxiedSocketAddress;
 import io.grpc.Internal;
 import io.grpc.ManagedChannelBuilder;
@@ -112,6 +113,8 @@ public final class NettyChannelBuilder extends ForwardingChannelBuilder2<NettyCh
   private LocalSocketPicker localSocketPicker;
 
   private Http2FrameLogger frameLogger;
+
+  private GrpcChannelListener channelListener;
 
   /**
    * If true, indicates that the transport may use the GET method for RPCs, and may include the
@@ -274,6 +277,12 @@ public final class NettyChannelBuilder extends ForwardingChannelBuilder2<NettyCh
 //      throw new IllegalArgumentException("logger must be of " + Http2FrameLogger.class.getName());
 //    }
     this.frameLogger = (Http2FrameLogger) logger;
+    return this;
+  }
+
+  public NettyChannelBuilder channelListener(GrpcChannelListener channelListener) {
+    super.channelListener(channelListener);
+    this.channelListener = channelListener;
     return this;
   }
 
@@ -553,7 +562,7 @@ public final class NettyChannelBuilder extends ForwardingChannelBuilder2<NettyCh
     return new NettyTransportFactory(
         negotiator, channelFactory, channelOptions,
         eventLoopGroupPool, autoFlowControl, flowControlWindow, maxInboundMessageSize,
-        maxHeaderListSize, frameLogger, keepAliveTimeNanos, keepAliveTimeoutNanos, keepAliveWithoutCalls,
+        maxHeaderListSize, frameLogger, channelListener, keepAliveTimeNanos, keepAliveTimeoutNanos, keepAliveWithoutCalls,
         transportTracerFactory, localSocketPicker, useGetForSafeMethods);
   }
 
@@ -695,13 +704,14 @@ public final class NettyChannelBuilder extends ForwardingChannelBuilder2<NettyCh
     private boolean closed;
 
     private final @Nullable Http2FrameLogger frameLogger;
+    private final @Nullable GrpcChannelListener channelListener;
 
     NettyTransportFactory(
         ProtocolNegotiator protocolNegotiator,
         ChannelFactory<? extends Channel> channelFactory,
         Map<ChannelOption<?>, ?> channelOptions, ObjectPool<? extends EventLoopGroup> groupPool,
         boolean autoFlowControl, int flowControlWindow, int maxMessageSize, int maxHeaderListSize,
-        @Nullable Http2FrameLogger frameLogger,
+        @Nullable Http2FrameLogger frameLogger, @Nullable GrpcChannelListener channelListener,
         long keepAliveTimeNanos, long keepAliveTimeoutNanos, boolean keepAliveWithoutCalls,
         TransportTracer.Factory transportTracerFactory, LocalSocketPicker localSocketPicker,
         boolean useGetForSafeMethods) {
@@ -723,6 +733,7 @@ public final class NettyChannelBuilder extends ForwardingChannelBuilder2<NettyCh
           localSocketPicker != null ? localSocketPicker : new LocalSocketPicker();
       this.useGetForSafeMethods = useGetForSafeMethods;
       this.frameLogger = frameLogger;
+      this.channelListener = channelListener;
     }
 
     @Override
@@ -755,7 +766,7 @@ public final class NettyChannelBuilder extends ForwardingChannelBuilder2<NettyCh
           localNegotiator, autoFlowControl, flowControlWindow,
           maxMessageSize, maxHeaderListSize, keepAliveTimeNanosState.get(), keepAliveTimeoutNanos,
           keepAliveWithoutCalls, options.getAuthority(), options.getUserAgent(),
-          frameLogger,
+          frameLogger, channelListener,
           tooManyPingsRunnable, transportTracerFactory.create(), options.getEagAttributes(),
           localSocketPicker, channelLogger, useGetForSafeMethods, Ticker.systemTicker());
       return transport;
@@ -775,7 +786,7 @@ public final class NettyChannelBuilder extends ForwardingChannelBuilder2<NettyCh
       }
       ClientTransportFactory factory = new NettyTransportFactory(
           result.negotiator.newNegotiator(), channelFactory, channelOptions, groupPool,
-          autoFlowControl, flowControlWindow, maxMessageSize, maxHeaderListSize, null, keepAliveTimeNanos,
+          autoFlowControl, flowControlWindow, maxMessageSize, maxHeaderListSize, null, null, keepAliveTimeNanos,
           keepAliveTimeoutNanos, keepAliveWithoutCalls, transportTracerFactory,  localSocketPicker,
           useGetForSafeMethods);
       return new SwapChannelCredentialsResult(factory, result.callCredentials);

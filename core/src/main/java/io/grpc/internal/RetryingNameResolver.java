@@ -87,6 +87,11 @@ final class RetryingNameResolver extends ForwardingNameResolver {
     }
 
     @Override
+    public void onResolve(String host) {
+      delegateListener.onResolve(host);
+    }
+
+    @Override
     public void onResult(ResolutionResult resolutionResult) {
       // If the resolution result listener is already an attribute it indicates that a name resolver
       // has already been wrapped with this class. This indicates a misconfiguration.

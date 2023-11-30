@@ -22,6 +22,8 @@ import static com.google.common.base.Preconditions.checkState;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
+
+import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 import java.security.cert.Certificate;
 import java.util.ArrayList;
@@ -664,6 +666,8 @@ public final class InternalChannelz {
     @Nullable public final Certificate localCert;
     @Nullable public final Certificate remoteCert;
 
+    private final WeakReference<SSLSession> sslSession;
+
     /**
      * A constructor only for testing.
      */
@@ -671,6 +675,7 @@ public final class InternalChannelz {
       this.cipherSuiteStandardName = cipherSuiteName;
       this.localCert = localCert;
       this.remoteCert = remoteCert;
+      sslSession = null;
     }
 
     /**
@@ -701,6 +706,15 @@ public final class InternalChannelz {
       this.cipherSuiteStandardName = cipherSuiteStandardName;
       this.localCert = localCert;
       this.remoteCert = remoteCert;
+      sslSession = new WeakReference<>(session);
+    }
+
+    public @Nullable SSLSession getSession() {
+      if (sslSession != null) {
+        return sslSession.get();
+      } else {
+        return null;
+      }
     }
   }
 

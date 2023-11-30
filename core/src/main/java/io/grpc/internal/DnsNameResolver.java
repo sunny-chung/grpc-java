@@ -307,6 +307,7 @@ public class DnsNameResolver extends NameResolver {
       }
       InternalResolutionResult result = null;
       try {
+        savedListener.onResolve(host);
         EquivalentAddressGroup proxiedAddr = detectProxy();
         ResolutionResult.Builder resolutionResultBuilder = ResolutionResult.newBuilder();
         if (proxiedAddr != null) {

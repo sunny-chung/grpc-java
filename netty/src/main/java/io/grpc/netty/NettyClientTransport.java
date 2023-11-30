@@ -30,6 +30,7 @@ import io.grpc.Attributes;
 import io.grpc.CallOptions;
 import io.grpc.ChannelLogger;
 import io.grpc.ClientStreamTracer;
+import io.grpc.GrpcChannelListener;
 import io.grpc.InternalChannelz.SocketStats;
 import io.grpc.InternalLogId;
 import io.grpc.Metadata;
@@ -109,6 +110,8 @@ class NettyClientTransport implements ConnectionClientTransport {
 
   private final Http2FrameLogger frameLogger;
 
+  private final GrpcChannelListener channelListener;
+
   NettyClientTransport(
       SocketAddress address, ChannelFactory<? extends Channel> channelFactory,
       Map<ChannelOption<?>, ?> channelOptions, EventLoopGroup group,
@@ -119,7 +122,7 @@ class NettyClientTransport implements ConnectionClientTransport {
       Runnable tooManyPingsRunnable, TransportTracer transportTracer, Attributes eagAttributes,
       LocalSocketPicker localSocketPicker, ChannelLogger channelLogger,
       boolean useGetForSafeMethods, Ticker ticker) {
-    this(address, channelFactory, channelOptions, group, negotiator, autoFlowControl, flowControlWindow, maxMessageSize, maxHeaderListSize, keepAliveTimeNanos, keepAliveTimeoutNanos, keepAliveWithoutCalls, authority, userAgent, null, tooManyPingsRunnable, transportTracer, eagAttributes, localSocketPicker, channelLogger, useGetForSafeMethods, ticker);
+    this(address, channelFactory, channelOptions, group, negotiator, autoFlowControl, flowControlWindow, maxMessageSize, maxHeaderListSize, keepAliveTimeNanos, keepAliveTimeoutNanos, keepAliveWithoutCalls, authority, userAgent, null, null, tooManyPingsRunnable, transportTracer, eagAttributes, localSocketPicker, channelLogger, useGetForSafeMethods, ticker);
     new Exception("NettyClientTransport creation").printStackTrace(); // TODO Sunny
   }
 
@@ -130,7 +133,7 @@ class NettyClientTransport implements ConnectionClientTransport {
       int maxMessageSize, int maxHeaderListSize,
       long keepAliveTimeNanos, long keepAliveTimeoutNanos,
       boolean keepAliveWithoutCalls, String authority, @Nullable String userAgent,
-      @Nullable Http2FrameLogger frameLogger,
+      @Nullable Http2FrameLogger frameLogger, @Nullable GrpcChannelListener channelListener,
       Runnable tooManyPingsRunnable, TransportTracer transportTracer, Attributes eagAttributes,
       LocalSocketPicker localSocketPicker, ChannelLogger channelLogger,
       boolean useGetForSafeMethods, Ticker ticker) {
@@ -161,6 +164,7 @@ class NettyClientTransport implements ConnectionClientTransport {
     this.useGetForSafeMethods = useGetForSafeMethods;
     this.ticker = Preconditions.checkNotNull(ticker, "ticker");
     this.frameLogger = frameLogger != null ? frameLogger : new Http2FrameLogger(LogLevel.DEBUG, NettyClientHandler.class);
+    this.channelListener = channelListener;
   }
 
   @Override
@@ -239,6 +243,7 @@ class NettyClientTransport implements ConnectionClientTransport {
     }
 
     handler = NettyClientHandler.newHandler(
+        channelListener,
         frameLogger,
         lifecycleManager,
         keepAliveManager,

@@ -615,6 +615,10 @@ public abstract class ManagedChannelBuilder<T extends ManagedChannelBuilder<T>> 
     throw new UnsupportedOperationException();
   }
 
+  public T channelListener(GrpcChannelListener channelListener) {
+    throw new UnsupportedOperationException();
+  }
+
   /**
    * Builds a channel using the given parameters.
    *

@@ -204,6 +204,10 @@ public abstract class NameResolver {
    */
   @ExperimentalApi("https://github.com/grpc/grpc-java/issues/1770")
   public abstract static class Listener2 implements Listener {
+    public void onResolve(String host) {
+
+    }
+
     /**
      * Handles updates on resolved addresses and attributes.
      *

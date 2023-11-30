@@ -27,6 +27,7 @@ import com.google.common.base.Supplier;
 import com.google.common.base.Ticker;
 import io.grpc.Attributes;
 import io.grpc.ChannelLogger;
+import io.grpc.GrpcChannelListener;
 import io.grpc.InternalChannelz;
 import io.grpc.Metadata;
 import io.grpc.Status;
@@ -77,6 +78,7 @@ import io.netty.handler.codec.http2.Http2StreamVisitor;
 import io.netty.handler.codec.http2.StreamBufferingEncoder;
 import io.netty.handler.codec.http2.WeightedFairQueueByteDistributor;
 import io.netty.handler.logging.LogLevel;
+import io.netty.handler.ssl.SslHandler;
 import io.perfmark.PerfMark;
 import io.perfmark.Tag;
 import io.perfmark.TaskCloseable;
@@ -134,7 +136,10 @@ class NettyClientHandler extends AbstractNettyHandler {
   private Status abruptGoAwayStatus;
   private Status channelInactiveReason;
 
+  private @Nullable GrpcChannelListener channelListener;
+
   static NettyClientHandler newHandler(
+      @Nullable GrpcChannelListener channelListener,
       Http2FrameLogger frameLogger,
       ClientTransportLifecycleManager lifecycleManager,
       @Nullable KeepAliveManager keepAliveManager,
@@ -161,6 +166,7 @@ class NettyClientHandler extends AbstractNettyHandler {
 
     return newHandler(
         connection,
+        channelListener,
         frameReader,
         frameWriter,
         frameLogger,
@@ -181,6 +187,7 @@ class NettyClientHandler extends AbstractNettyHandler {
   @VisibleForTesting
   static NettyClientHandler newHandler(
       final Http2Connection connection,
+      @Nullable GrpcChannelListener channelListener,
       Http2FrameReader frameReader,
       Http2FrameWriter frameWriter,
       Http2FrameLogger frameLogger,
@@ -232,6 +239,7 @@ class NettyClientHandler extends AbstractNettyHandler {
     settings.maxHeaderListSize(maxHeaderListSize);
 
     return new NettyClientHandler(
+        channelListener,
         decoder,
         encoder,
         settings,
@@ -249,6 +257,7 @@ class NettyClientHandler extends AbstractNettyHandler {
   }
 
   private NettyClientHandler(
+      @Nullable GrpcChannelListener channelListener,
       Http2ConnectionDecoder decoder,
       Http2ConnectionEncoder encoder,
       Http2Settings settings,
@@ -265,6 +274,7 @@ class NettyClientHandler extends AbstractNettyHandler {
       Ticker ticker) {
     super(/* channelUnused= */ null, decoder, encoder, settings,
         negotiationLogger, autoFlowControl, pingLimiter, ticker);
+    this.channelListener = channelListener;
     this.lifecycleManager = lifecycleManager;
     this.keepAliveManager = keepAliveManager;
     this.stopwatchFactory = stopwatchFactory;
@@ -429,6 +439,14 @@ class NettyClientHandler extends AbstractNettyHandler {
     super.close(ctx, promise);
   }
 
+  @Override
+  public void channelActive(ChannelHandlerContext ctx) throws Exception {
+    if (channelListener != null) {
+      channelListener.onChannelActive();
+    }
+    super.channelActive(ctx);
+  }
+
   /**
    * Handler for the Channel shutting down.
    */
@@ -466,12 +484,21 @@ class NettyClientHandler extends AbstractNettyHandler {
       if (keepAliveManager != null) {
         keepAliveManager.onTransportTermination();
       }
+      if (channelListener != null) {
+        channelListener.onChannelInactive();
+      }
     }
   }
 
   @Override
   public void handleProtocolNegotiationCompleted(
       Attributes attributes, InternalChannelz.Security securityInfo) {
+    if (channelListener != null && securityInfo != null && securityInfo.tls != null) {
+      channelListener.onTlsHandshakeComplete(
+        securityInfo.tls.getSession(),
+        ctx().pipeline().get(SslHandler.class).applicationProtocol()
+      );
+    }
     this.attributes = this.attributes.toBuilder().setAll(attributes).build();
     this.securityInfo = securityInfo;
     super.handleProtocolNegotiationCompleted(attributes, securityInfo);
