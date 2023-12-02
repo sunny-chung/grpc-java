@@ -19,7 +19,11 @@ subprojects {
     apply plugin: "com.google.osdetector"
     apply plugin: "net.ltgt.errorprone"
 
-    group = "io.grpc"
+    if (project.name in ["grpc-core", "grpc-api", "grpc-netty", "grpc-netty-shaded"]) {
+        group = "io.github.sunny-chung"
+    } else {
+        group = "io.grpc"
+    }
     version = "1.59.1-patch1" // CURRENT_GRPC_VERSION
 
     repositories {
@@ -331,15 +335,15 @@ subprojects {
                 maven(MavenPublication) {
                     pom {
                         name = project.group + ":" + project.name
-                        url = 'https://github.com/grpc/grpc-java'
+                        url = 'https://github.com/sunny-chung/grpc-java'
                         afterEvaluate {
                             // description is not available until evaluated.
                             description = project.description
                         }
 
                         scm {
-                            connection = 'scm:git:https://github.com/grpc/grpc-java.git'
-                            developerConnection = 'scm:git:git@github.com:grpc/grpc-java.git'
+                            connection = 'scm:git:https://github.com/sunny-chung/grpc-java.git'
+                            developerConnection = 'scm:git:git@github.com:sunny-chung/grpc-java.git'
                             url = 'https://github.com/grpc/grpc-java'
                         }
 
@@ -373,7 +377,8 @@ subprojects {
                             stagingUrl = 'https://oss.sonatype.org/service/local/staging/deployByRepositoryId/' +
                                     rootProject.repositoryId
                         } else {
-                            stagingUrl = 'https://oss.sonatype.org/service/local/staging/deploy/maven2/'
+//                            stagingUrl = 'https://oss.sonatype.org/service/local/staging/deploy/maven2/'
+                            stagingUrl = 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/'
                         }
                         credentials {
                             if (rootProject.hasProperty('ossrhUsername') && rootProject.hasProperty('ossrhPassword')) {
